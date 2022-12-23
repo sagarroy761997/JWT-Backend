@@ -1,10 +1,12 @@
+
 require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const app = express();
-const port = 5000;
+const port = 3000;
 const db = require("./util/dbPool");
 const bcrypt = require("bcrypt");
+const jwt = require('jsonwebtoken');
 
 app.use(
   bodyParser.urlencoded({
@@ -25,12 +27,12 @@ app.put("/updateUsers/:id", db.updateUser);
 app.delete("/deleteUsers/:id", db.deleteUser);
 
 
-const users = []
-
-app.get('/users', (req, res) => {
-  res.json(users)
+const users =[];
+app.get('/users',authenticateToken, (req, res) => {
+  // res.json(req.user)
+  res.json(users.filter(element => element.name === req.user.name))
 })
-
+app.get('/',db.getUsers)
 app.post('/users', async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10)
@@ -49,15 +51,35 @@ app.post('/users/login', async (req, res) => {
   }
   try {
     if(await bcrypt.compare(req.body.password, user.password)) {
-      res.send('Success')
+      const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET_KEY)
+      res.json({
+        // authentication: 'Success',
+        accessToken: accessToken
+      })
     } else {
       res.send('Not Allowed')
     }
-  } catch {
+  } 
+  catch {
     res.status(500).send()
   }
 })
-
+function authenticateToken(req,res,next){
+  const authHeader = req.headers['authorization']
+  const token = authHeader && authHeader.split(' ')[1]
+  if(token == null){
+    return res.status(401).send();
+  }
+  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET_KEY,(err,user) => {
+    if(err){
+      return res.status(403).send();
+    }
+    req.user = user
+    next()
+  })
+}
 app.listen(port, () => {
   console.log(`App running on port ${port}.`);
 });
+
+module.exports = users;
