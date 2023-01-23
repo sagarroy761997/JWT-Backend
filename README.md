@@ -17,4 +17,6 @@ To create a backend of login page which uses JWT token for autherization
 - /auth  route is which do the autherization with that available token.
 - /logout will delete the cookie which has the accessToken
 
+# Things Learned
+- JWT token
 
